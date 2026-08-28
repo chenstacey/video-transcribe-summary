@@ -1,6 +1,6 @@
 ---
 name: video-transcribe-summary
-description: Transcribe and summarize online videos (Bilibili, YouTube, podcasts, etc.) into a structured Chinese document with timestamped transcript, key points, and direct quotes, plus a WeChat-shareable long image (PNG infographic). Use when the user sends a video link (B站/bilibili/youtube/podcast URL) and asks to "transcribe", "转写", "总结", "summarize", or "extract content" from it. Downloads audio locally and runs mlx-whisper for speech-to-text on Apple Silicon — no API keys needed.
+description: Transcribe and summarize online videos (Bilibili, YouTube, Apple Podcasts, Xiaoyuzhou 小宇宙, podcasts, etc.) into a structured Chinese document with timestamped transcript, key points, and direct quotes, plus a WeChat-shareable long image (PNG infographic). Use when the user sends a video link (B站/bilibili/youtube/podcast URL) and asks to "transcribe", "转写", "总结", "summarize", or "extract content" from it. Downloads audio locally and runs mlx-whisper for speech-to-text on Apple Silicon — no API keys needed.
 agent_created: true
 ---
 
@@ -17,7 +17,7 @@ User sends a video/audio URL and asks for any of:
 - 字幕 / subtitles
 - "帮我看看这个视频讲了什么"
 
-Supported sources: Bilibili, YouTube, podcast pages, direct audio URLs, local files.
+Supported sources: Bilibili, YouTube, Apple Podcasts, 小宇宙 (Xiaoyuzhou), podcast pages, direct audio URLs, local files.
 
 ## Prerequisites (one-time setup)
 
@@ -107,6 +107,20 @@ The `<enclosure url=...>` is a direct mp3 link (often via podtrac/pdst.fm redire
 
 Also check the episode description in the RSS `<description>` or iTunes API — podcast episodes sometimes have full show notes with structure/segments that help with summarization.
 
+**小宇宙 (Xiaoyuzhou)** — URL format: `https://www.xiaoyuzhoufm.com/episode/<EPISODE_ID>`. The episode page HTML embeds the direct audio URL (`media.xyzcdn.net/...m4a`) — no yt-dlp, no API needed. Fetch the page and grep it:
+
+```bash
+curl -s "https://www.xiaoyuzhoufm.com/episode/<EPISODE_ID>" \
+  -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" \
+  > "$TMPDIR/xyz.html"
+
+# Extract direct m4a URL + title + duration from the embedded JSON/HTML
+grep -o 'https://media.xyzcdn.net/[^"]*\.m4a' "$TMPDIR/xyz.html" | head -1
+grep -o '<title>[^<]*</title>' "$TMPDIR/xyz.html"
+```
+
+The first `media.xyzcdn.net` match is the full episode audio (`.m4a`). Also grab the shownotes text from the page (in the `shownotes` JSON field) — it often contains episode structure and guest bios useful for summarization. Feed URL (if needed): `https://www.xiaoyuzhoufm.com/podcasts/<PODCAST_ID>/rss`.
+
 **YouTube / other sites**: Use `yt-dlp --list-subs <URL>` to check for available caption tracks. If a usable caption track exists, download it directly with `yt-dlp --write-subs --write-auto-subs --sub-langs <lang> --skip-download <URL>` and skip transcription entirely.
 
 **Decision tree:**
@@ -127,6 +141,10 @@ TMPDIR=$(mktemp -d /tmp/vid_transcribe.XXXXXX)
 
 # Podcasts: use the direct enclosure mp3 URL from Step 1 (no yt-dlp needed)
 curl -sL "<enclosure_url>" -o "$TMPDIR/episode.mp3" -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
+
+# 小宇宙: use the direct m4a URL scraped from the episode page in Step 1
+curl -sL "<xyzcdn_m4a_url>" -o "$TMPDIR/episode.m4a" -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
+# ffmpeg segmenting in Step 3 handles .m4a input the same as .mp3 — just adjust the filename.
 ```
 
 For very long videos (>30 min), consider `--download-sections "*00:00:00-00:30:00"` to trim, or ask the user which segment they want.
@@ -311,6 +329,7 @@ img.crop((0, 0, w, min(h, last + 41))).save(
 | Apple Podcasts WebFetch returns CN browse page | Expected — region redirect. Use iTunes API lookup + RSS feed path (Step 1). |
 | Episode not in iTunes lookup results (only recent episodes returned) | Parse the show's RSS feed directly and grep for the episode title keyword. |
 | Podcast enclosure URL returns HTML instead of mp3 | Use `curl -sL` (follow redirects through podtrac/pdst.fm/arttrk chains) and a browser User-Agent. |
+| 小宇宙 page has no `media.xyzcdn.net` URL | Page may need JS rendering — retry with a browser User-Agent; or try the RSS feed `https://www.xiaoyuzhoufm.com/podcasts/<PODCAST_ID>/rss` and grep the episode `<enclosure>`. |
 | Chrome `--headless` fails "GPU process isn't usable" | Use `--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage` instead |
 | Screenshot image too tall / bottom whitespace | Render at 750x4200 then PIL-trim bottom white rows (script in Step 6) |
 | Long image text too small on phone | Never shrink font sizes — 750px wide is 2x phone width; sizes in template are already correct |

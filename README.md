@@ -2,7 +2,7 @@
 
 Turn any online video/audio link into a structured Chinese document: timestamped transcript (translated when needed) + executive summary + key quotes, plus an optional WeChat-shareable long image (PNG infographic).
 
-Works with: **Bilibili, YouTube, Apple Podcasts (RSS), direct audio URLs, local files**.
+Works with: **Bilibili, YouTube, Apple Podcasts (RSS), 小宇宙 (Xiaoyuzhou), direct audio URLs, local files**.
 
 No API keys needed — audio is downloaded locally and transcribed with Whisper:
 - **macOS (Apple Silicon)**: [mlx-whisper](https://github.com/ml-explore/mlx-audio) (Metal-accelerated)
@@ -47,7 +47,7 @@ If the target machine cannot reach GitHub (e.g. `networkEnvironment: internal`),
 
 ## How it works
 
-1. **Metadata first**: Bilibili API (cid + CC subtitle check), YouTube via `yt-dlp --list-subs`, Apple Podcasts via iTunes API + RSS feed → direct mp3 enclosure.
+1. **Metadata first**: Bilibili API (cid + CC subtitle check), YouTube via `yt-dlp --list-subs`, Apple Podcasts via iTunes API + RSS feed → direct mp3 enclosure, Xiaoyuzhou via episode-page scrape → direct m4a URL.
 2. **Captions if available, else ASR**: usable CC/auto captions are downloaded (seconds); otherwise audio is downloaded and transcribed locally.
 3. **Chunked transcription**: audio >~15 min is split into 580s chunks (avoids tool timeouts), each run through the auto-selected Whisper engine (medium), then merged with correct global timestamps.
 4. **Chinese summary document**: Executive Summary + timestamped organized transcript + key quotes table.
