@@ -272,7 +272,7 @@ Write a Markdown file to the workspace with this structure:
 
 After the Markdown document, generate a mobile-friendly vertical PNG summarizing the Executive Summary. Users share these directly in WeChat.
 
-**Template**: `$SKILL_DIR/templates/wechat_longimage_template.html` (the directory containing this SKILL.md; on this Mac: `~/.workbuddy/skills/video-transcribe-summary/`)
+**Template**: `$SKILL_DIR/templates/wechat_longimage_template.html` (the directory containing this SKILL.md, e.g. `~/.workbuddy/skills/video-transcribe-summary/`)
 
 1. Copy the template, replace `{{PLACEHOLDERS}}`: header (tag/title/subtitle/meta), 4-8 cards (one per key point — each needs a title, 2-3 sentence condensed body, and a direct quote), footer (closing quote + attribution + source line).
 2. Card color classes rotate through `c-teal / c-amber / c-blue / c-coral / c-purple / c-green`. Keep card body text SHORT — it's a summary card, not the full transcript.
@@ -313,7 +313,7 @@ img.crop((0, 0, w, min(h, last + 41))).save(
 
 ### Step 7 — Present and clean up
 
-1. Save the Markdown file AND the long image PNG to the current workspace: `<workspace>/[title].md` + `<workspace>/[title]长图.png` (on this Mac: `/Users/stacey/WorkBuddy/<session>/`)
+1. Save the Markdown file AND the long image PNG to the current workspace: `<workspace>/[title].md` + `<workspace>/[title]长图.png`
 2. Call `present_files` with BOTH files in one call.
 3. The `$TMPDIR` audio/JSON/HTML files are disposable — leave them; they'll be cleaned by the OS.
 

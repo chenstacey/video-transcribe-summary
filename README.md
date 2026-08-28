@@ -25,8 +25,6 @@ bash setup.sh     # detects OS/Python/ffmpeg/Chrome, creates venv, installs deps
 
 Then reload WorkBuddy. Sending any video/audio URL with "转写 / transcribe / 总结 / summarize" triggers the skill.
 
-> **Private repo note**: if this repo is private, authenticate first with `gh auth login` or a PAT, and use `git clone https://<token>@github.com/chenstacey/video-transcribe-summary.git` instead.
-
 ### Offline transfer (no GitHub access, e.g. internal-network sandbox)
 
 If the target machine cannot reach GitHub (e.g. `networkEnvironment: internal`), transfer the repo as a zip:
