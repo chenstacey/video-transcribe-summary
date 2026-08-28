@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  /* WeChat long image template — 750px wide, mobile-optimized
+     Usage: replace {{PLACEHOLDERS}}, fill cards, render via Chrome headless.
+     Color ramp classes: c-teal c-amber c-blue c-coral c-purple c-green */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", sans-serif;
+    background: #FFFFFF;
+    color: #2C2C2A;
+    width: 750px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .header {
+    background: #04342C;
+    color: #FFFFFF;
+    padding: 64px 48px 56px;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::after {
+    content: "";
+    position: absolute;
+    right: -60px; top: -60px;
+    width: 300px; height: 300px;
+    border-radius: 50%;
+    background: rgba(29, 158, 117, 0.15);
+  }
+  .header::before {
+    content: "";
+    position: absolute;
+    right: 48px; bottom: -90px;
+    width: 180px; height: 180px;
+    border-radius: 50%;
+    border: 4px solid rgba(159, 225, 203, 0.18);
+  }
+  .header .tag {
+    display: inline-block;
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: #9FE1CB;
+    border: 1.5px solid rgba(159, 225, 203, 0.35);
+    border-radius: 8px;
+    padding: 6px 18px;
+    margin-bottom: 28px;
+  }
+  .header h1 {
+    font-size: 48px;
+    font-weight: 700;
+    line-height: 1.35;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
+  }
+  .header .subtitle {
+    font-size: 25px;
+    color: rgba(255,255,255,0.72);
+    line-height: 1.7;
+    position: relative;
+    z-index: 1;
+  }
+  .header .meta {
+    margin-top: 32px;
+    font-size: 21px;
+    color: rgba(255,255,255,0.5);
+    position: relative;
+    z-index: 1;
+  }
+  .header .meta span { margin-right: 24px; }
+  .cards { padding: 40px 40px 0; }
+  .card {
+    display: flex;
+    padding: 36px 0;
+    border-bottom: 1.5px solid #ECEAE3;
+  }
+  .card:last-child { border-bottom: none; }
+  .badge-col { flex: 0 0 96px; }
+  .badge {
+    width: 72px; height: 72px;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: 700;
+    font-family: Georgia, serif;
+  }
+  .card-content { flex: 1; min-width: 0; }
+  .card-title {
+    font-size: 31px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    line-height: 1.4;
+  }
+  .card-body {
+    font-size: 25px;
+    color: #5F5E5A;
+    line-height: 1.7;
+    margin-bottom: 18px;
+  }
+  .card-quote {
+    padding: 18px 22px;
+    border-radius: 12px;
+    font-size: 25px;
+    font-weight: 600;
+    line-height: 1.6;
+  }
+  .c-teal .badge { background: #E1F5EE; color: #0F6E56; }
+  .c-teal .card-title { color: #085041; }
+  .c-teal .card-quote { background: #E1F5EE; color: #04342C; }
+  .c-amber .badge { background: #FAEEDA; color: #854F0B; }
+  .c-amber .card-title { color: #633806; }
+  .c-amber .card-quote { background: #FAEEDA; color: #412402; }
+  .c-blue .badge { background: #E6F1FB; color: #185FA5; }
+  .c-blue .card-title { color: #0C447C; }
+  .c-blue .card-quote { background: #E6F1FB; color: #042C53; }
+  .c-coral .badge { background: #FAECE7; color: #993C1D; }
+  .c-coral .card-title { color: #712B13; }
+  .c-coral .card-quote { background: #FAECE7; color: #4A1B0C; }
+  .c-purple .badge { background: #EEEDFE; color: #534AB7; }
+  .c-purple .card-title { color: #3C3489; }
+  .c-purple .card-quote { background: #EEEDFE; color: #26215C; }
+  .c-green .badge { background: #EAF3DE; color: #3B6D11; }
+  .c-green .card-title { color: #27500A; }
+  .c-green .card-quote { background: #EAF3DE; color: #173404; }
+  .footer {
+    margin: 36px 40px 0;
+    padding: 48px 40px;
+    background: #E1F5EE;
+    border-radius: 20px;
+    text-align: center;
+  }
+  .footer-quote {
+    font-size: 33px;
+    font-weight: 700;
+    color: #04342C;
+    line-height: 1.6;
+    margin-bottom: 14px;
+  }
+  .footer-attr { font-size: 25px; color: #0F6E56; }
+  .footer-src {
+    margin-top: 26px;
+    padding-top: 22px;
+    border-top: 1.5px solid rgba(15, 110, 86, 0.2);
+    font-size: 20px;
+    color: #5F5E5A;
+    line-height: 1.6;
+  }
+  .bottom-pad { height: 48px; background: #FFFFFF; }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <span class="tag">{{TAG e.g. 深度访谈总结}}</span>
+    <h1>{{TITLE — use <br> for manual line breaks}}</h1>
+    <div class="subtitle">{{SUBTITLE — source/interviewer info}}</div>
+    <div class="meta"><span>{{META 1}}</span><span>{{META 2}}</span></div>
+  </div>
+
+  <div class="cards">
+
+    <div class="card c-teal">
+      <div class="badge-col"><div class="badge">01</div></div>
+      <div class="card-content">
+        <div class="card-title">{{CARD 1 TITLE}}</div>
+        <div class="card-body">{{CARD 1 BODY — 2-3 sentences, condensed from Executive Summary}}</div>
+        <div class="card-quote">"{{CARD 1 QUOTE}}"</div>
+      </div>
+    </div>
+
+    <div class="card c-amber">
+      <div class="badge-col"><div class="badge">02</div></div>
+      <div class="card-content">
+        <div class="card-title">{{CARD 2 TITLE}}</div>
+        <div class="card-body">{{CARD 2 BODY}}</div>
+        <div class="card-quote">"{{CARD 2 QUOTE}}"</div>
+      </div>
+    </div>
+
+    <div class="card c-blue">
+      <div class="badge-col"><div class="badge">03</div></div>
+      <div class="card-content">
+        <div class="card-title">{{CARD 3 TITLE}}</div>
+        <div class="card-body">{{CARD 3 BODY}}</div>
+        <div class="card-quote">"{{CARD 3 QUOTE}}"</div>
+      </div>
+    </div>
+
+    <div class="card c-coral">
+      <div class="badge-col"><div class="badge">04</div></div>
+      <div class="card-content">
+        <div class="card-title">{{CARD 4 TITLE}}</div>
+        <div class="card-body">{{CARD 4 BODY}}</div>
+        <div class="card-quote">"{{CARD 4 QUOTE}}"</div>
+      </div>
+    </div>
+
+    <div class="card c-purple">
+      <div class="badge-col"><div class="badge">05</div></div>
+      <div class="card-content">
+        <div class="card-title">{{CARD 5 TITLE}}</div>
+        <div class="card-body">{{CARD 5 BODY}}</div>
+        <div class="card-quote">"{{CARD 5 QUOTE}}"</div>
+      </div>
+    </div>
+
+    <div class="card c-green">
+      <div class="badge-col"><div class="badge">06</div></div>
+      <div class="card-content">
+        <div class="card-title">{{CARD 6 TITLE}}</div>
+        <div class="card-body">{{CARD 6 BODY}}</div>
+        <div class="card-quote">"{{CARD 6 QUOTE}}"</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    <div class="footer-quote">{{CLOSING QUOTE — use <br> for line breaks}}</div>
+    <div class="footer-attr">— {{ATTRIBUTION}}</div>
+    <div class="footer-src">{{SOURCE LINE 1}}<br>{{SOURCE LINE 2 — e.g. 完整转写与实录详见文档版}}</div>
+  </div>
+
+  <div class="bottom-pad"></div>
+
+</body>
+</html>
