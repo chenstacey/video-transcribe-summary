@@ -4,7 +4,9 @@ Turn any online video/audio link into a structured Chinese document: timestamped
 
 Works with: **Bilibili, YouTube, Apple Podcasts (RSS), direct audio URLs, local files**.
 
-No API keys needed — audio is downloaded locally and transcribed with [mlx-whisper](https://github.com/ml-explore/mlx-audio) on Apple Silicon.
+No API keys needed — audio is downloaded locally and transcribed with Whisper:
+- **macOS (Apple Silicon)**: [mlx-whisper](https://github.com/ml-explore/mlx-audio) (Metal-accelerated)
+- **Linux / cloud / other**: [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (CPU, CTranslate2) — auto-selected by `setup.sh` and `scripts/transcribe.py`
 
 ## Install (as a WorkBuddy skill)
 
@@ -16,26 +18,38 @@ mkdir -p ~/.workbuddy/skills
 git clone https://github.com/chenstacey/video-transcribe-summary.git \
   ~/.workbuddy/skills/video-transcribe-summary
 
-# or for a cloud/other machine: clone anywhere, then run the one-time setup
+# or for a cloud/other machine: clone anywhere (or unzip the transfer bundle), then run setup
 cd ~/.workbuddy/skills/video-transcribe-summary
-bash setup.sh     # detects Python/ffmpeg/Chrome, creates venv, installs deps
+bash setup.sh     # detects OS/Python/ffmpeg/Chrome, creates venv, installs deps
 ```
 
 Then reload WorkBuddy. Sending any video/audio URL with "转写 / transcribe / 总结 / summarize" triggers the skill.
 
 > **Private repo note**: if this repo is private, authenticate first with `gh auth login` or a PAT, and use `git clone https://<token>@github.com/chenstacey/video-transcribe-summary.git` instead.
 
+### Offline transfer (no GitHub access, e.g. internal-network sandbox)
+
+If the target machine cannot reach GitHub (e.g. `networkEnvironment: internal`), transfer the repo as a zip:
+
+1. Download `video-transcribe-summary.zip` from any machine with GitHub access.
+2. On the target machine: `unzip video-transcribe-summary.zip -d ~/.workbuddy/skills/` (archive root folder is `video-transcribe-summary/`).
+3. Run `bash ~/.workbuddy/skills/video-transcribe-summary/setup.sh`.
+
+**Caveat**: `setup.sh` (pip install yt-dlp / faster-whisper) and the Whisper model download both require outbound network. On a fully internal sandbox, test connectivity first:
+`pip download faster-whisper --no-deps -d /tmp/test` — if that fails, only the file layout will work; transcription still needs network or a pre-downloaded model.
+
 ## Requirements
 
-- macOS with Apple Silicon (M1+) — mlx-whisper is Metal-accelerated. On non-Apple machines, swap `mlx_whisper` for `openai-whisper` (slower, same workflow).
+- **macOS (Apple Silicon)**: mlx-whisper (Metal-accelerated, default engine)
+- **Linux / cloud / other**: faster-whisper (CPU, CTranslate2) — auto-selected by `setup.sh` / `scripts/transcribe.py`
 - Python 3.10+, ffmpeg (for long-audio splitting), Chrome/Chromium/Edge (optional, only for the WeChat long-image step).
-- ~2 GB free disk for the whisper-medium model cache (one-time download).
+- ~2 GB free disk for the whisper-medium model cache (one-time download; requires outbound network to Hugging Face / mlx-community).
 
 ## How it works
 
 1. **Metadata first**: Bilibili API (cid + CC subtitle check), YouTube via `yt-dlp --list-subs`, Apple Podcasts via iTunes API + RSS feed → direct mp3 enclosure.
 2. **Captions if available, else ASR**: usable CC/auto captions are downloaded (seconds); otherwise audio is downloaded and transcribed locally.
-3. **Chunked transcription**: audio >~15 min is split into 580s chunks (avoids tool timeouts), each run through mlx-whisper (medium), then merged with correct global timestamps.
+3. **Chunked transcription**: audio >~15 min is split into 580s chunks (avoids tool timeouts), each run through the auto-selected Whisper engine (medium), then merged with correct global timestamps.
 4. **Chinese summary document**: Executive Summary + timestamped organized transcript + key quotes table.
 5. **WeChat long image (PNG)**: optional 750px vertical infographic rendered from an HTML template via headless Chrome, bottom-trimmed with PIL.
 
@@ -51,8 +65,10 @@ Then reload WorkBuddy. Sending any video/audio URL with "转写 / transcribe / �
 ```
 video-transcribe-summary/
 ├── SKILL.md                          # the skill definition (WorkBuddy reads this)
-├── setup.sh                          # one-time env detection + deps install
+├── setup.sh                          # one-time env detection + deps install (macOS & Linux)
 ├── README.md
+├── scripts/
+│   └── transcribe.py                 # cross-platform Whisper CLI (mlx-whisper / faster-whisper)
 └── templates/
     └── wechat_longimage_template.html # {{placeholder}} template for the PNG infographic
 ```

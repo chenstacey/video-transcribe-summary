@@ -21,22 +21,23 @@ Supported sources: Bilibili, YouTube, podcast pages, direct audio URLs, local fi
 
 ## Prerequisites (one-time setup)
 
-Run the bundled detector once per machine — it finds a Python env that already has `mlx_whisper` + `yt_dlp`, creates a venv and installs them if missing, and prints the exact paths to use:
+Run the bundled detector once per machine — it finds a Python env that already has the ASR engine + `yt_dlp` (mlx-whisper on macOS Apple Silicon, faster-whisper on Linux), creates a venv and installs them if missing, and prints the exact paths to use:
 
 ```bash
 bash setup.sh          # from this skill's directory
 ```
 
-It prints `export` lines for `PYTHON`, `YTDLP`, `FFMPEG`, `FFPROBE`, `CHROME`. Put them in your shell profile (or just substitute them inline below). All commands in this skill use these variables — never hardcode machine-specific paths.
+It prints `export` lines for `PYTHON`, `YTDLP`, `FFMPEG`, `FFPROBE`, `CHROME`, `ASR_ENGINE`. Put them in your shell profile (or just substitute them inline below). All commands in this skill use these variables — never hardcode machine-specific paths.
 
 Quick manual equivalent:
 ```bash
 # Create venv if missing
 python3 -m venv ~/.workbuddy/venvs/video-transcribe-summary 2>/dev/null
-# Install tools (idempotent)
+# Install tools (idempotent) — engine depends on OS:
+#   macOS Apple Silicon: mlx-whisper | Linux/other: faster-whisper
 ~/.workbuddy/venvs/video-transcribe-summary/bin/pip install -q yt-dlp mlx-whisper 2>&1 | tail -1
 # Verify ffmpeg (system, should already exist)
-which ffmpeg || echo "INSTALL: brew install ffmpeg"
+which ffmpeg || echo "INSTALL: brew install ffmpeg  (Linux: apt-get install -y ffmpeg)"
 ```
 
 Key binaries (use the variables from `setup.sh`):
@@ -130,9 +131,9 @@ curl -sL "<enclosure_url>" -o "$TMPDIR/episode.mp3" -H "User-Agent: Mozilla/5.0 
 
 For very long videos (>30 min), consider `--download-sections "*00:00:00-00:30:00"` to trim, or ask the user which segment they want.
 
-### Step 3 — Transcribe with mlx-whisper
+### Step 3 — Transcribe (mlx-whisper on macOS / faster-whisper on Linux)
 
-**CRITICAL — Split audio for long videos.** A single mlx-whisper run on >15 min of audio will hit the Bash timeout (SIGKILL exit 137). Split into ≤10 min chunks:
+**CRITICAL — Split audio for long videos.** A single Whisper run on >15 min of audio will hit the Bash timeout (SIGKILL exit 137). Split into ≤10 min chunks:
 
 ```bash
 # Get duration first
@@ -145,35 +146,15 @@ echo "Duration: ${DURATION}s"
 ls "$TMPDIR"/part*.mp3
 ```
 
-**Transcription script** (save as `$TMPDIR/transcribe.py`):
+**Transcription script** — bundled in the skill at `scripts/transcribe.py`. It auto-selects the engine:
+- macOS (Apple Silicon) → `mlx_whisper` (Metal-accelerated)
+- Linux / other → `faster-whisper` (CPU, CTranslate2, int8) — **required for cloud/Linux environments**
 
-```python
-import mlx_whisper, json, sys
+Copy it into the working dir and run per chunk (same CLI as before):
 
-audio_path = sys.argv[1]
-output_path = sys.argv[2]
-lang = sys.argv[3] if len(sys.argv) > 3 else None  # e.g. "bs", "zh", "en", "ja"
-
-kwargs = {
-    "path_or_hf_repo": "mlx-community/whisper-medium",
-    "word_timestamps": False,
-    "verbose": False,
-}
-if lang:
-    kwargs["language"] = lang
-
-result = mlx_whisper.transcribe(audio_path, **kwargs)
-
-with open(output_path, "w", encoding="utf-8") as f:
-    json.dump(result, f, ensure_ascii=False, indent=2)
-
-for seg in result.get("segments", []):
-    s, e = seg.get("start", 0), seg.get("end", 0)
-    t = seg.get("text", "").strip()
-    m1, s1 = divmod(int(s), 60); m2, s2 = divmod(int(e), 60)
-    print(f"[{m1:02d}:{s1:02d} - {m2:02d}:{s2:02d}] {t}")
-
-print(f"\nDetected language: {result.get('language','?')}")
+```bash
+cp "<skill_dir>/scripts/transcribe.py" "$TMPDIR/transcribe.py"
+# usage: transcribe.py <audio> <output.json> [lang_hint] [model]
 ```
 
 Run each chunk separately (parallel is fine if memory allows, but sequential is safer):
@@ -231,7 +212,7 @@ Write a Markdown file to the workspace with this structure:
 > **来源**: [URL]
 > **原始出处**: [original source if known, e.g. YouTube link from Bilibili description]
 > **时长**: [duration] | **语言**: [detected language]
-> **转写方式**: mlx-whisper (medium) + 中文整理翻译
+> **转写方式**: Whisper medium（macOS: mlx-whisper / Linux: faster-whisper）+ 中文整理翻译
 
 ---
 
@@ -323,7 +304,7 @@ img.crop((0, 0, w, min(h, last + 41))).save(
 | Problem | Fix |
 |---------|-----|
 | yt-dlp Bilibili 412 error | Add `--cookies-from-browser chrome` (user must be logged into Bilibili in Chrome) |
-| mlx-whisper SIGKILL (exit 137) | Audio too long — split into ≤10 min chunks, transcribe separately |
+| Whisper SIGKILL (exit 137) | Audio too long — split into ≤10 min chunks, transcribe separately |
 | Model download slow first time | 512MB one-time download. Subsequent runs use cache. This is expected. |
 | Whisper misidentifies language | Pass `language` hint explicitly. For BCS languages, `bs` works for all three. |
 | Empty Bilibili subtitle API | Normal for hardcoded-subtitle videos. Proceed to audio download + ASR. |
@@ -348,9 +329,17 @@ img.crop((0, 0, w, min(h, last + 41))).save(
 
 ## Model selection
 
-- **whisper-medium** (default, 1.5GB): Best balance of speed/accuracy. 512MB download.
-- **whisper-large-v3** (3GB): Higher accuracy, ~3x slower. Use for critical accuracy needs: `mlx-community/whisper-large-v3-mlx`.
-- **whisper-small** (500MB): Faster, less accurate. Use for quick drafts: `mlx-community/whisper-small`.
+Pass the model name as the 4th CLI arg to `scripts/transcribe.py` (default `medium`).
+
+- **whisper-medium** (default): Best balance of speed/accuracy.
+- **whisper-large-v3**: Higher accuracy, slower. For critical accuracy needs.
+- **whisper-small**: Faster, less accurate. Use for quick drafts.
+
+Engine-specific model names (auto-handled by the script):
+- macOS mlx-whisper: `mlx-community/whisper-<model>` (e.g. `whisper-medium`)
+- Linux faster-whisper: plain name (`medium`, `small`, `large-v3`) — CPU int8, downloads from Hugging Face on first run
+
+> **Cloud/Linux environments**: faster-whisper needs outbound network to Hugging Face for the model download. If the machine has no external internet (e.g. internal sandbox), transcription cannot run regardless — report this early and suggest downloading the model elsewhere.
 
 ## Notes
 
