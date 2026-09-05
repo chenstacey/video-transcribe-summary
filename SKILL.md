@@ -323,6 +323,7 @@ img.crop((0, 0, w, min(h, last + 41))).save(
 |---------|-----|
 | yt-dlp Bilibili 412 error | Add `--cookies-from-browser chrome` (user must be logged into Bilibili in Chrome) |
 | Whisper SIGKILL (exit 137) | Audio too long — split into ≤10 min chunks, transcribe separately |
+| Chunk transcription stalls for many minutes (per-chunk time balloons from ~1 min to 5+ min) | mlx-whisper spawns a fresh process per chunk and re-validates the HuggingFace model cache online; flaky/slow connectivity to huggingface.co (esp. mainland China direct) hangs for minutes before falling back to the local cache. Fix: once the model is cached locally, run with `HF_HUB_OFFLINE=1` to skip the network check entirely (`export HF_HUB_OFFLINE=1` before the loop). Optionally run 2-3 chunks in parallel if memory allows. Diagnose via `ls -la t*.json` mtimes — pure compute stays ~1 min/chunk on Apple Silicon. |
 | Model download slow first time | 512MB one-time download. Subsequent runs use cache. This is expected. |
 | Whisper misidentifies language | Pass `language` hint explicitly. For BCS languages, `bs` works for all three. |
 | Empty Bilibili subtitle API | Normal for hardcoded-subtitle videos. Proceed to audio download + ASR. |
